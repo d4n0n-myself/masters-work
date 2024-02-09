@@ -24,7 +24,7 @@ best_model = compare_models()
 # Прогнозирование на новых данных
 new_X = np.array([[5.1, 3.5, 1.4, 0.2], [5.9, 3.0, 5.1, 1.8], [5.1, 2.5, 3.0, 1.1]])  # Пример новых данных
 new_X_pca = pca.transform(new_X)
-new_data = pd.DataFrame(np.concatenate((new_X_pca, np.zeros((new_X.shape[0], 1))), axis=1),
+new_data = pd.DataFrame(np.concatenate((new_X_pca, [[0], [2], [1]]), axis=1),
                         columns=['feature1', 'feature2', 'target'])
 predictions = predict_model(best_model, data=new_data)
 
