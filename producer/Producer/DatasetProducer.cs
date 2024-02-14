@@ -12,7 +12,7 @@ public class DatasetProducer
     public DatasetProducer(IOptions<ProducerConfig> optionsSnapshot, ILogger<DatasetProducer> logger)
     {
         _logger = logger;
-        _config = new ProducerConfig { BootstrapServers = "localhost:9092", };
+        _config = optionsSnapshot.Value;
     }
 
     private const string TopicName = "datasets_input";
