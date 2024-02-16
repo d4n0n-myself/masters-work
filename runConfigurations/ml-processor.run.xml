@@ -6,10 +6,10 @@
     <option name="PARENT_ENVS" value="true" />
     <envs>
       <env name="KAFKA_BOOTSTRAP_SERVERS" value="localhost:9092" />
+      <env name="MINIO_ACCESS_KEY" value="oESO3J9hOl6Xd2IBIrOz" />
       <env name="MINIO_ENDPOINT" value="localhost:9000" />
+      <env name="MINIO_SECRET_KEY" value="Qz4OXPf0FEEKyaDak50SrIL1yx4Wp3MH0qRSUqg6" />
       <env name="PYTHONUNBUFFERED" value="1" />
-      <env name="MINIO_ACCESS_KEY" value="zKrpwJCHmQfSzkx9KiWG" />
-      <env name="MINIO_SECRET_KEY" value="QWwdX1n6egiU9FQ0RTrEaSiMh9TTXp0EcV7tuHyn" />
     </envs>
     <option name="SDK_HOME" value="" />
     <option name="SDK_NAME" value="Python 3.9" />

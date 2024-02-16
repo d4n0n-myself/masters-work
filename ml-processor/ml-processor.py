@@ -25,7 +25,7 @@ consumer = KafkaConsumer(datasets_input_topic, bootstrap_servers=kafka_bootstrap
 producer = KafkaProducer(bootstrap_servers=kafka_bootstrap_servers)
 
 # Создание Minio клиента
-minio_client = Minio(minio_endpoint, access_key=minio_access_key, secret_key=minio_secret_key)
+minio_client = Minio(minio_endpoint, access_key=minio_access_key, secret_key=minio_secret_key, secure=False)
 
 
 def process_message_with_autogluon(df, dataset_id):
@@ -33,28 +33,28 @@ def process_message_with_autogluon(df, dataset_id):
     train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
 
     # Метод классификации с AutoGluon
-    predictor = ag.TabularPredictor(label='target').fit(train_data)
+    predictor = ag.TabularPredictor(label='output').fit(train_data)
 
     # Классификация тестовых значений
     predictions = predictor.predict(test_data)
 
+    file_name = f'{dataset_id}_autogluon_predictions.csv'
+
     # Создание CSV файла с результатами классификации
-    predictions.to_csv(f'autogluon_predictions.csv', index=False)
+    predictions.to_csv(file_name, index=False)
 
     # Загрузка CSV файла с результатами в Minio
-    minio_client.fput_object(minio_output_bucket_name,
-                             f'{dataset_id}_predictions.csv',
-                             f'{dataset_id}_predictions.csv')
+    minio_client.fput_object(minio_output_bucket_name, file_name, file_name)
 
     # Создание сообщения в топик datasets_output
-    producer.send(datasets_output_topic, key=dataset_id.encode(), value=f'{dataset_id}_predictions.csv'.encode())
+    producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
 
 
 def process_message_with_autokeras(df, dataset_id):
     # Использование AutoKeras
     clf = ak.StructuredDataClassifier(max_trials=10)
     train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
-    clf.fit(train_data, train_data['target'])
+    clf.fit(train_data, train_data['output'])
     ak_predictions = clf.predict(test_data)
 
     # Запись результатов классификации AutoKeras в CSV файл
@@ -69,8 +69,8 @@ def process_message_with_tpot(df, dataset_id):
     # Использование TPOT
     tpot_clf = TPOTClassifier(generations=5, population_size=20, verbosity=2)
     train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
-    tpot_clf.fit(train_data.drop('target', axis=1), train_data['target'])
-    tpot_predictions = tpot_clf.predict(test_data.drop('target', axis=1))
+    tpot_clf.fit(train_data.drop('output', axis=1), train_data['output'])
+    tpot_predictions = tpot_clf.predict(test_data.drop('output', axis=1))
 
     # Запись результатов классификации TPOT в CSV файл
     tpot_predictions.to_csv(f'{dataset_id}_tpot_predictions.csv', index=False)
@@ -83,7 +83,7 @@ def process_message_with_tpot(df, dataset_id):
 def process_message_with_pycaret(df, dataset_id):
     train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
     # Использование PyCaret
-    setup(data=train_data, target='target')
+    setup(data=train_data, target='output')
     pycaret_clf = compare_models()
     pycaret_predictions = predict_model(pycaret_clf, data=test_data)
 
@@ -101,14 +101,15 @@ for message in consumer:
     # Получение сообщения
     trace_id = message.key.decode()
     dataset_path = message.value.decode()
+    csv_file_path = f'{trace_id}.csv'
 
     # Скачивание CSV файла из Minio
-    minio_client.fget_object(minio_input_bucket_name, dataset_path, dataset_path)
-    csv_file_path = dataset_path
+    minio_client.fget_object(minio_input_bucket_name, dataset_path, csv_file_path)
 
     # Загрузка CSV файла в DataFrame
     dataframe = pd.read_csv(csv_file_path)
     process_message_with_autogluon(dataframe, trace_id)
-    process_message_with_autokeras(dataframe, trace_id)
-    process_message_with_tpot(dataframe, trace_id)
-    process_message_with_pycaret(dataframe, trace_id)
+    # process_message_with_autokeras(dataframe, trace_id)
+    # process_message_with_tpot(dataframe, trace_id)
+    # process_message_with_pycaret(dataframe, trace_id)
+    # todo cleanup files
