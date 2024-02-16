@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Confluent.Kafka;
 using Microsoft.Extensions.Options;
 
@@ -17,21 +16,23 @@ public class DatasetProducer
 
     private const string TopicName = "datasets_input";
 
-    public async Task ProduceAsync(DatasetMessageArgs value, CancellationToken ct = default)
+    public async Task<string> ProduceAsync(string value, CancellationToken ct = default)
     {
-        using var p = new ProducerBuilder<Null, DatasetMessageArgs>(_config)
-            .SetKeySerializer(new KafkaJsonSerializer<Null>(new JsonSerializerOptions() { }))
-            .SetValueSerializer(new KafkaJsonSerializer<DatasetMessageArgs>())
+        using var p = new ProducerBuilder<string, string>(_config)
             .Build();
 
         try
         {
-            var dr = await p.ProduceAsync(TopicName, new Message<Null, DatasetMessageArgs>() { Value = value }, ct);
-            _logger.LogInformation($"Delivered '{dr.Value}' to '{dr.TopicPartitionOffset}'");
+            var newGuid = Guid.NewGuid().ToString();
+            var dr = await p.ProduceAsync(TopicName, new Message<string, string> { Key = newGuid, Value = value }, ct);
+            _logger.LogInformation("Delivered '{Value}' with key '{Key}' to '{TopicPartitionOffset}'",
+                dr.Value, dr.Key, dr.TopicPartitionOffset);
+            return newGuid;
         }
         catch (ProduceException<Null, string> e)
         {
-            _logger.LogInformation($"Delivery failed: {e.Error.Reason}");
+            _logger.LogError("Delivery failed: {Reason}", e.Error.Reason);
+            throw new Exception("Delivery failed");
         }
     }
 }

@@ -17,9 +17,6 @@ public class ProduceController : ControllerBase
 
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> ProduceAsync(string url, CancellationToken ct = default)
-    {
-        await _producer.ProduceAsync(new() { FileUrl = url }, ct);
-        return Ok();
-    }
+    public async Task<IActionResult> ProduceAsync(string url, CancellationToken ct = default) =>
+        Ok(await _producer.ProduceAsync(url, ct));
 }

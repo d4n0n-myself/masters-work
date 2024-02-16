@@ -16,7 +16,6 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-builder.Services.AddTransient(typeof(KafkaJsonSerializer<>));
 builder.Services.AddScoped<DatasetProducer>();
 builder.Services.Configure<ProducerConfig>(builder.Configuration.GetSection(nameof(ProducerConfig)));
 
