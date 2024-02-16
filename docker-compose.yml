@@ -64,7 +64,7 @@ services:
     depends_on:
       - kafka
     environment:
-      ProducerConfig__BootstrapServers: kafka:9092
+      ProducerConfig__BootstrapServers: kafka:29092
 
   postgres:
     image: postgres:latest
