@@ -4,6 +4,7 @@ services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
+    restart: on-failure
     networks: 
       - default-network
     ports:
@@ -14,6 +15,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:latest
+    restart: on-failure
     networks: 
       - default-network
     depends_on:
@@ -44,21 +46,22 @@ services:
 
   minio:
     image: 'bitnami/minio:latest'
-    volumes:
-      - 'd:/_rosstat_files_/minio:/data'
+    restart: on-failure
     ports:
       - '9000:9000'
       - '9001:9001'
     environment:
       - MINIO_ROOT_USER=developer
       - MINIO_ROOT_PASSWORD=developer
+      - MINIO_DEFAULT_BUCKETS=datasets-input,datasets-output
 
   producer:
+    restart: on-failure
     build:
       no_cache: true
       dockerfile: producer/Producer/Dockerfile
     ports:
-      - "5000:5000"
+      - "5001:5000"
     networks:
       - default-network
     depends_on:

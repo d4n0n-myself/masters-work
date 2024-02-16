@@ -17,8 +17,8 @@ datasets_output_topic = 'datasets_output'
 minio_endpoint = os.environ.get('MINIO_ENDPOINT')
 minio_access_key = os.environ.get('MINIO_ACCESS_KEY')
 minio_secret_key = os.environ.get('MINIO_SECRET_KEY')
-minio_input_bucket_name = 'datasets_input'
-minio_output_bucket_name = 'datasets_output'
+minio_input_bucket_name = 'datasets-input'
+minio_output_bucket_name = 'datasets-output'
 
 # Создание Kafka consumer и producer
 consumer = KafkaConsumer(datasets_input_topic, bootstrap_servers=kafka_bootstrap_servers)
