@@ -103,8 +103,8 @@ for message in consumer:
     dataset_path = message.value.decode()
 
     # Скачивание CSV файла из Minio
-    minio_client.fget_object(minio_input_bucket_name, dataset_path, f'{trace_id}.csv')
-    csv_file_path = f'{trace_id}.csv'
+    minio_client.fget_object(minio_input_bucket_name, dataset_path, dataset_path)
+    csv_file_path = dataset_path
 
     # Загрузка CSV файла в DataFrame
     dataframe = pd.read_csv(csv_file_path)
