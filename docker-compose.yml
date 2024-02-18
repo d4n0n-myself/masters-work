@@ -2,59 +2,6 @@ version: '3.8'
 
 services:
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    restart: on-failure
-    networks: 
-      - default-network
-    ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
-  kafka:
-    image: confluentinc/cp-kafka:latest
-    restart: on-failure
-    networks: 
-      - default-network
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_LOG_CLEANER_DELETE_RETENTION_MS: 5000
-      KAFKA_BROKER_ID: 1
-      KAFKA_MIN_INSYNC_REPLICAS: 1
-
-  kowl:
-    image: quay.io/cloudhut/kowl:master
-    restart: on-failure
-    networks: 
-      - default-network
-    environment:
-      KAFKA_BROKERS: kafka:29092
-    ports:
-    - "8080:8080"
-    depends_on:
-      - kafka
-
-  minio:
-    image: 'bitnami/minio:latest'
-    restart: on-failure
-    ports:
-      - '9000:9000'
-      - '9001:9001'
-    environment:
-      - MINIO_ROOT_USER=developer
-      - MINIO_ROOT_PASSWORD=developer
-      - MINIO_DEFAULT_BUCKETS=datasets-input,datasets-output
-
   producer:
     restart: on-failure
     build:
@@ -64,18 +11,22 @@ services:
       - "5001:5000"
     networks:
       - default-network
-    depends_on:
-      - kafka
     environment:
       ProducerConfig__BootstrapServers: kafka:29092
 
-  postgres:
-    image: postgres:latest
+  web:
     restart: on-failure
+    build:
+      no_cache: true
+      dockerfile: producer/Web/Dockerfile
     ports:
-    - "5432:5432"
+      - "5050:5000"
+    networks:
+      - default-network
     environment:
-      POSTGRES_PASSWORD: postgres
+      MinioOptions__Endpoint: host.docker.internal:9000
+      MinioOptions__AccessKey: x4gPrlZuzDT8Ms7duYGQ
+      MinioOptions__SecretKey: c290oswm6rVgvGnNZ2EnJ2RpkkAZsDVDqmjkkWGw
 
 networks: 
   default-network:
