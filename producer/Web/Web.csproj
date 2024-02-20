@@ -14,18 +14,4 @@
         <PackageReference Include="Minio" Version="6.0.2" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Content Include="..\.dockerignore">
-        <Link>.dockerignore</Link>
-      </Content>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Properties\" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Remove="Properties\launchSettings.json" />
-    </ItemGroup>
-
 </Project>
