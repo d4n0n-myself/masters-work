@@ -17,9 +17,13 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddScoped<DatasetProducer>();
+builder.Services.AddSingleton<DatasetConsumer>();
 builder.Services.Configure<ProducerConfig>(builder.Configuration.GetSection(nameof(ProducerConfig)));
+builder.Services.Configure<ConsumerConfig>(builder.Configuration.GetSection(nameof(ConsumerConfig)));
 
 var app = builder.Build();
+
+Task.Run(() => app.Services.GetRequiredService<DatasetConsumer>().ConsumeAsync());
 
 app.UseSwagger();
 app.UseSwaggerUI(options =>
