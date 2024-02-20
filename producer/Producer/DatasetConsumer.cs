@@ -7,18 +7,21 @@ namespace Producer;
 
 public class DatasetConsumer
 {
-    private readonly ConsumerConfig _config;
+    private readonly ConsumerConfig _consumerConfig;
+    private readonly DatabaseOptions _databaseConfig;
     private const string TopicName = "datasets_output";
 
-    public DatasetConsumer(IOptions<ConsumerConfig> optionsSnapshot)
+    public DatasetConsumer(IOptions<ConsumerConfig> consumerOptions,
+        IOptions<DatabaseOptions> databaseOptions)
     {
-        _config = optionsSnapshot.Value;
+        _consumerConfig = consumerOptions.Value;
+        _databaseConfig = databaseOptions.Value;
     }
 
     public async Task ConsumeAsync(CancellationToken ct = default)
     {
-        using var consumer = new ConsumerBuilder<string, string>(_config).Build();
-        await using var connection = new NpgsqlConnection();
+        using var consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build();
+        await using var connection = new NpgsqlConnection(_databaseConfig.ConnectionString);
 
         try
         {
