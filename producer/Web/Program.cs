@@ -9,7 +9,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 var minioOptions = new MinioOptions();
-builder.Configuration.GetSection(nameof(DatabaseOptions)).Bind(minioOptions);
+builder.Configuration.GetSection(nameof(MinioOptions)).Bind(minioOptions);
 builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection(nameof(DatabaseOptions)));
 
 builder.Services.AddSwaggerGen(options =>

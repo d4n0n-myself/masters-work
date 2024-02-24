@@ -30,43 +30,50 @@ public class ResultsController : Controller
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> TestAsync(string fileName, CancellationToken ct = default)
+    public async Task<IActionResult> SingleAsync(string fileName, CancellationToken ct = default)
     {
         const string bucket = "datasets-output";
 
         var result = new List<string[]>();
         var hadError = false;
+        var memStream = new MemoryStream(); 
 
         var getArgs = new GetObjectArgs()
             .WithBucket(bucket)
             .WithObject(fileName)
             .WithCallbackStream(s =>
             {
-                using var reader = new StreamReader(s);
-                var readToEnd = reader.ReadToEnd();
-                _logger.LogDebug(readToEnd);
-
-                try
-                {
-                    using var parser = new CsvParser(new StringReader(readToEnd), CultureInfo.InvariantCulture);
-                    while (parser.Read())
-                    {
-                        result.Add(parser.Record);
-                    }
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Error response: ");
-                    hadError = true;
-                }
+                s.CopyTo(memStream);
+                memStream.Seek(0, SeekOrigin.Begin);
             });
+
         await _minioClient.GetObjectAsync(getArgs, ct);
 
+        using var reader = new StreamReader(memStream);
+        var readToEnd = await reader.ReadToEndAsync(ct);
+        _logger.LogDebug(readToEnd);
+
+        try
+        {
+            using var parser = new CsvParser(new StringReader(readToEnd), CultureInfo.InvariantCulture);
+            while (await parser.ReadAsync())
+            {
+                result.Add(parser.Record);
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error response: ");
+            hadError = true;
+        }
+        
         return hadError
             ? new StatusCodeResult(StatusCodes.Status500InternalServerError)
             : Ok(result);
     }
 
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ListDatasetsAsync()
     {
         await using var connection = new NpgsqlConnection(_config.ConnectionString);
@@ -74,24 +81,26 @@ public class ResultsController : Controller
         return Ok(list);
     }
 
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ListFilesAsync([Required] string id, CancellationToken ct = default)
     {
-        if (Guid.TryParse(id, out var guid))
+        if (!Guid.TryParse(id, out _))
             throw new Exception("cant parse guid");
-        
+
         await using var connection = new NpgsqlConnection(_config.ConnectionString);
-        var parameters = new { Guid = guid };
+        var parameters = new { Guid = id };
         var files = await connection.QueryAsync<string>(
             "SELECT filename FROM datasets WHERE id = @Guid", parameters);
 
-        var result = new Dictionary<string, string[]>();
-        
+        var result = new Dictionary<string, List<string[]>>();
+
         foreach (var filename in files)
         {
-            var data = await TestAsync(filename, ct);
+            var data = await SingleAsync(filename, ct);
 
             if (data is OkObjectResult okObjectResult)
-                result.Add(filename, okObjectResult.Value as string[]);
+                result.Add(filename, (List<string[]>)okObjectResult.Value);
         }
 
         return Ok(result);
