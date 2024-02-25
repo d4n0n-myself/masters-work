@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
 
@@ -7,19 +6,19 @@ namespace Producer;
 public class DatasetTrackingTask : IBackgroundTask
 {
     private readonly IServiceProvider _container;
-    private readonly MinioClient _minioClient;
+    private readonly IMinioClient _minioClient;
     private readonly DatasetProducer _producer;
     private readonly TrackerConfiguration[] _configurations;
 
-    public DatasetTrackingTask(IOptions<TrackerConfiguration[]> options,
+    public DatasetTrackingTask(TrackerConfiguration[] options,
         IServiceProvider container,
-        MinioClient minioClient,
+        IMinioClient minioClient,
         DatasetProducer producer)
     {
         _container = container;
         _minioClient = minioClient;
         _producer = producer;
-        _configurations = options.Value;
+        _configurations = options;
     }
 
     public async Task ExecuteAsync(CancellationToken ct)

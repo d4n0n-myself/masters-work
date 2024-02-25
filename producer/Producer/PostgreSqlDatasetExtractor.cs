@@ -7,12 +7,14 @@ public class PostgreSqlDatasetExtractor : IDatasetExtractor
 {
     public TrackerType Type => TrackerType.PostgreSql;
 
-    public async Task<Dictionary<string, Stream>> ExtractAsync(ITrackerConfiguration configuration)
+    public async Task<Dictionary<string, Stream>> ExtractAsync(IConfigurationSection section)
     {
-        if (configuration is not PostgreSqlConnectionConfiguration pgConfig)
+        var configuration = section.Get<PostgreSqlConnectionConfiguration>();
+
+        if (configuration == default || string.IsNullOrEmpty(configuration.ConnectionString))
             throw new Exception("Bad PostgreSql connection options for tracker");
 
-        await using var connection = new NpgsqlConnection(pgConfig.ConnectionString);
+        await using var connection = new NpgsqlConnection(configuration.ConnectionString);
 
         var tableNames = await connection.QueryAsync<string>(
             "select table_name from public.datasets where not processed;");

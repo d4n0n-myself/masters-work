@@ -21,12 +21,22 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-builder.Services.AddScoped<DatasetProducer>();
+builder.Services.AddSingleton<DatasetProducer>();
 builder.Services.AddSingleton<DatasetConsumer>();
 builder.Services.Configure<ProducerConfig>(builder.Configuration.GetSection(nameof(ProducerConfig)));
 builder.Services.Configure<ConsumerConfig>(builder.Configuration.GetSection(nameof(ConsumerConfig)));
 
-builder.Services.Configure<TrackerConfiguration[]>(builder.Configuration.GetSection("Trackers"));
+var configurationSections = builder.Configuration.GetSection("Trackers")
+    .GetChildren()
+    .Select(x =>
+    {
+        var cf = new TrackerConfiguration();
+        x.Bind(cf);
+        return cf;
+    })
+    .ToArray();
+
+builder.Services.AddSingleton(configurationSections);
 
 var minioOptions = new MinioOptions();
 builder.Configuration.GetSection(nameof(MinioOptions)).Bind(minioOptions);
@@ -49,12 +59,15 @@ builder.Services.AddMinio(configureClient => configureClient
     .WithCredentials(minioOptions.AccessKey, minioOptions.SecretKey)
     .WithSSL(false));
 
+builder.Services.AddSingleton<DatasetTrackingTask>();
+builder.Services.AddSingleton<IDatasetExtractor, PostgreSqlDatasetExtractor>();
+
 var app = builder.Build();
 app.UseHangfireDashboard();
 
 var tasksTypes = AppDomain.CurrentDomain.GetAssemblies()
     .SelectMany(x => x.GetTypes())
-    .Where(x => x.IsAssignableFrom(typeof(IBackgroundTask)));
+    .Where(x => typeof(IBackgroundTask).IsAssignableFrom(x) && x != typeof(IBackgroundTask));
 
 foreach (var tasksType in tasksTypes)
 {
