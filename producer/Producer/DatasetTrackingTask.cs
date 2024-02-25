@@ -38,16 +38,18 @@ public class DatasetTrackingTask : IBackgroundTask
 
             foreach (var (datasetName, stream) in streams)
             {
+                var fileName = datasetName + ".csv";
+                stream.Seek(0, SeekOrigin.Begin);
                 const string bucket = "datasets-input";
                 await _minioClient.PutObjectAsync(new PutObjectArgs()
                     .WithBucket(bucket)
-                    .WithObject(datasetName + ".csv")
+                    .WithObject(fileName)
                     .WithStreamData(stream)
                     .WithObjectSize(stream.Length)
                     .WithContentType("text/csv"),
                     ct);
 
-                await _producer.ProduceAsync(datasetName, ct: ct);
+                await _producer.ProduceAsync(fileName, ct: ct);
             }
         }
     }

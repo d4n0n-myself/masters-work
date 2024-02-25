@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dapper;
 using Npgsql;
 
@@ -24,15 +25,19 @@ public class PostgreSqlDatasetExtractor : IDatasetExtractor
         foreach (var tableName in tableNames)
         {
             var parameters = new { TableName = tableName };
-            var tableColumns = await connection.QueryAsync<string>(
+            var tableColumns = (await connection.QueryAsync<string>(
                 "select column_name from information_schema.columns where table_schema = 'public' and table_name = @TableName;",
-                parameters);
-
-            // new csv
-            // add to stream
+                parameters))
+                .ToArray();
 
             var stream = new MemoryStream();
-            stream.Seek(0, SeekOrigin.Begin);
+            await using var streamWriter = new StreamWriter(stream, leaveOpen: true);
+            await using var csvWriter = new CsvHelper.CsvWriter(streamWriter, CultureInfo.InvariantCulture);
+
+            var records = await connection.QueryAsync($"SELECT {string.Join(",", tableColumns)} FROM public.{tableName}");
+
+            await csvWriter.WriteRecordsAsync(records);
+
             result.Add(tableName, stream);
 
             await connection.ExecuteAsync(
