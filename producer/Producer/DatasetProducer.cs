@@ -25,7 +25,7 @@ public class DatasetProducer
         {
             var newGuid = Guid.NewGuid().ToString();
             var dr = await p.ProduceAsync(TopicName, new Message<string, string> { Key = newGuid, Value = value }, ct);
-            _logger.LogInformation("Delivered '{Value}' with key '{Key}' to '{TopicPartitionOffset}'",
+            _logger.LogDebug("Delivered '{Value}' with key '{Key}' to '{TopicPartitionOffset}'",
                 dr.Value, dr.Key, dr.TopicPartitionOffset);
             return newGuid;
         }

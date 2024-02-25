@@ -1,4 +1,4 @@
-namespace Web.Controllers;
+namespace Core;
 
 public class DatabaseOptions
 {

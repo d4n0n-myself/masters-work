@@ -1,7 +1,6 @@
+using Core;
 using Microsoft.OpenApi.Models;
 using Minio;
-using Web;
-using Web.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
 

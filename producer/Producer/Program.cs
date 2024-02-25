@@ -1,6 +1,11 @@
 using Confluent.Kafka;
+using Core;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.OpenApi.Models;
+using Minio;
 using Producer;
+using DatabaseOptions = Producer.DatabaseOptions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +26,45 @@ builder.Services.AddSingleton<DatasetConsumer>();
 builder.Services.Configure<ProducerConfig>(builder.Configuration.GetSection(nameof(ProducerConfig)));
 builder.Services.Configure<ConsumerConfig>(builder.Configuration.GetSection(nameof(ConsumerConfig)));
 
+builder.Services.Configure<TrackerConfiguration[]>(builder.Configuration.GetSection("Trackers"));
+
+var minioOptions = new MinioOptions();
+builder.Configuration.GetSection(nameof(MinioOptions)).Bind(minioOptions);
+var databaseOptions = new DatabaseOptions();
+builder.Configuration.GetSection(nameof(DatabaseOptions)).Bind(databaseOptions);
+
+// Add Hangfire services.
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(databaseOptions.ConnectionString)));
+
+// Add the processing server as IHostedService
+builder.Services.AddHangfireServer();
+
+// Add Minio using the custom endpoint and configure additional settings for default MinioClient initialization
+builder.Services.AddMinio(configureClient => configureClient
+    .WithEndpoint(minioOptions.Endpoint)
+    .WithCredentials(minioOptions.AccessKey, minioOptions.SecretKey)
+    .WithSSL(false));
+
 var app = builder.Build();
+app.UseHangfireDashboard();
+
+var tasksTypes = AppDomain.CurrentDomain.GetAssemblies()
+    .SelectMany(x => x.GetTypes())
+    .Where(x => x.IsAssignableFrom(typeof(IBackgroundTask)));
+
+foreach (var tasksType in tasksTypes)
+{
+    var service = (IBackgroundTask) app.Services.GetRequiredService(tasksType);
+    var jobId = tasksType.FullName;
+    RecurringJob.RemoveIfExists(jobId);
+    RecurringJob.AddOrUpdate(jobId, 
+        () => service.ExecuteAsync(default),
+        Cron.Minutely);
+}
 
 Task.Run(() => app.Services.GetRequiredService<DatasetConsumer>().ConsumeAsync());
 
@@ -33,6 +76,7 @@ app.UseSwaggerUI(options =>
 });
 
 app.MapControllers();
+app.MapHangfireDashboard();
 
 app.MapGet("/", () => "Hello World!");
 

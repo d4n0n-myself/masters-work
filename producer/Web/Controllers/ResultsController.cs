@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using Core;
 using CsvHelper;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
@@ -77,7 +78,7 @@ public class ResultsController : Controller
     public async Task<IActionResult> ListDatasetsAsync()
     {
         await using var connection = new NpgsqlConnection(_config.ConnectionString);
-        var list = await connection.QueryAsync<string>("SELECT DISTINCT id FROM datasets");
+        var list = await connection.QueryAsync<string>("SELECT DISTINCT id FROM results");
         return Ok(list);
     }
 
@@ -91,7 +92,7 @@ public class ResultsController : Controller
         await using var connection = new NpgsqlConnection(_config.ConnectionString);
         var parameters = new { Guid = id };
         var files = await connection.QueryAsync<string>(
-            "SELECT filename FROM datasets WHERE id = @Guid", parameters);
+            "SELECT filename FROM results WHERE id = @Guid", parameters);
 
         var result = new Dictionary<string, List<string[]>>();
 

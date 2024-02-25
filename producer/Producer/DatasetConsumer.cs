@@ -31,7 +31,7 @@ public class DatasetConsumer
             {
                 var consumeResult = consumer.Consume(ct);
                 var parameters = new { Id = consumeResult.Message.Key, FileName = consumeResult.Message.Value };
-                await connection.ExecuteAsync("INSERT INTO datasets (id, filename) VALUES (@Id, @FileName)",
+                await connection.ExecuteAsync("INSERT INTO results (id, filename) VALUES (@Id, @FileName)",
                     parameters);
             }
         }

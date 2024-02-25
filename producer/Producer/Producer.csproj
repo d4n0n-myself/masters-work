@@ -6,10 +6,19 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Confluent.Kafka" Version="2.3.0"/>
+        <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
         <PackageReference Include="Dapper" Version="2.1.28" />
+        <PackageReference Include="Hangfire.Core" Version="1.8.*" />
+        <PackageReference Include="Hangfire.PostgreSql" Version="1.20.6" />
+        <PackageReference Include="Hangfire.SqlServer" Version="1.8.*" />
+        <PackageReference Include="Hangfire.AspNetCore" Version="1.8.*" />
+        <PackageReference Include="Minio" Version="6.0.2" />
         <PackageReference Include="Npgsql" Version="8.0.2" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0"/>
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Core\Core.csproj" />
     </ItemGroup>
 
 </Project>

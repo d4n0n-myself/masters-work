@@ -1,4 +1,4 @@
-namespace Web;
+namespace Core;
 
 public class MinioOptions
 {
