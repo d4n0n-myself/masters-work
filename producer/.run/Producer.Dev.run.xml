@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Producer.Dev" type="DotNetProject" factoryName=".NET Project">
-    <option name="EXE_PATH" value="$PROJECT_DIR$/Producer/bin/Debug/net7.0/Producer.exe" />
+    <option name="EXE_PATH" value="$PROJECT_DIR$/Producer/bin/Debug/net7.0/Producer.dll" />
     <option name="PROGRAM_PARAMETERS" value="" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Producer" />
     <option name="PASS_PARENT_ENVS" value="1" />

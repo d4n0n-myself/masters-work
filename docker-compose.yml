@@ -12,7 +12,16 @@ services:
     networks:
       - default-network
     environment:
+      Trackers__0__Type: PostgreSql
+      Trackers__0__Configuration__ConnectionString: Server=host.docker.internal;Port=5432;Database=masters;User ID=postgres;Password=postgres
+      MinioOptions__Endpoint: host.docker.internal:9000
+      MinioOptions__AccessKey: oESO3J9hOl6Xd2IBIrOz
+      MinioOptions__SecretKey: Qz4OXPf0FEEKyaDak50SrIL1yx4Wp3MH0qRSUqg6
       ProducerConfig__BootstrapServers: kafka:29092
+      ConsumerConfig__BootstrapServers: kafka:29092
+      ConsumerConfig__GroupId: client
+      ConsumerConfig__AutoOffsetReset: Earliest
+      DatabaseOptions__ConnectionString: Server=host.docker.internal;Port=5432;Database=masters;User ID=postgres;Password=postgres
 
   web:
     restart: on-failure
@@ -25,8 +34,9 @@ services:
       - default-network
     environment:
       MinioOptions__Endpoint: host.docker.internal:9000
-      MinioOptions__AccessKey: x4gPrlZuzDT8Ms7duYGQ
-      MinioOptions__SecretKey: c290oswm6rVgvGnNZ2EnJ2RpkkAZsDVDqmjkkWGw
+      MinioOptions__AccessKey: oESO3J9hOl6Xd2IBIrOz
+      MinioOptions__SecretKey: Qz4OXPf0FEEKyaDak50SrIL1yx4Wp3MH0qRSUqg6
+      DatabaseOptions__ConnectionString: Server=host.docker.internal;Port=5432;Database=masters;User ID=postgres;Password=postgres
 
 networks: 
   default-network:

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import TheWelcome from '../components/TheWelcome.vue'
+import Datasets from '../components/Datasets.vue'
 </script>
 
 <template>
   <main>
-    <TheWelcome />
+    <Datasets />
   </main>
 </template>

@@ -40,8 +40,10 @@ builder.Services.AddSingleton(configurationSections);
 
 var minioOptions = new MinioOptions();
 builder.Configuration.GetSection(nameof(MinioOptions)).Bind(minioOptions);
+builder.Services.AddSingleton(minioOptions);
 var databaseOptions = new DatabaseOptions();
 builder.Configuration.GetSection(nameof(DatabaseOptions)).Bind(databaseOptions);
+builder.Services.AddSingleton(databaseOptions);
 
 // Add Hangfire services.
 builder.Services.AddHangfire(configuration => configuration

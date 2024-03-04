@@ -21,7 +21,7 @@ minio_input_bucket_name = 'datasets-input'
 minio_output_bucket_name = 'datasets-output'
 
 # Создание Kafka consumer и producer
-consumer = KafkaConsumer(datasets_input_topic, bootstrap_servers=kafka_bootstrap_servers)
+consumer = KafkaConsumer(datasets_input_topic, group_id="python-client", bootstrap_servers=kafka_bootstrap_servers)
 producer = KafkaProducer(bootstrap_servers=kafka_bootstrap_servers)
 
 # Создание Minio клиента
@@ -44,40 +44,38 @@ def process_message_with_autogluon(df, dataset_id):
     predictions.to_csv(file_name, index=False)
 
     # Загрузка CSV файла с результатами в Minio
-    minio_client.fput_object(minio_output_bucket_name, file_name, file_name)
+    minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
 
     # Создание сообщения в топик datasets_output
     producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
 
 
 def process_message_with_autokeras(df, dataset_id):
+    train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
     # Использование AutoKeras
     clf = ak.StructuredDataClassifier(max_trials=10)
-    train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
     clf.fit(train_data, train_data['output'])
-    ak_predictions = clf.predict(test_data)
+    predictions = clf.predict(test_data)
 
-    # Запись результатов классификации AutoKeras в CSV файл
-    ak_predictions.to_csv(f'{dataset_id}_ak_predictions.csv', index=False)
-    minio_client.fput_object(minio_output_bucket_name,
-                             f'{dataset_id}_ak_predictions.csv',
-                             f'{dataset_id}_ak_predictions.csv')
-    producer.send(datasets_output_topic, key=dataset_id.encode(), value=f'{dataset_id}_ak_predictions.csv'.encode())
+    file_name = f'{dataset_id}_autokeras_predictions.csv'
+    res = pd.DataFrame(predictions)
+    res.to_csv(file_name, index=False)
+    minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
+    producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
 
 
 def process_message_with_tpot(df, dataset_id):
+    train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
     # Использование TPOT
     tpot_clf = TPOTClassifier(generations=5, population_size=20, verbosity=2)
-    train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
     tpot_clf.fit(train_data.drop('output', axis=1), train_data['output'])
-    tpot_predictions = tpot_clf.predict(test_data.drop('output', axis=1))
+    predictions = tpot_clf.predict(test_data.drop('output', axis=1))
 
-    # Запись результатов классификации TPOT в CSV файл
-    tpot_predictions.to_csv(f'{dataset_id}_tpot_predictions.csv', index=False)
-    minio_client.fput_object(minio_output_bucket_name,
-                             f'{dataset_id}_tpot_predictions.csv',
-                             f'{dataset_id}_tpot_predictions.csv')
-    producer.send(datasets_output_topic, key=dataset_id.encode(), value=f'{dataset_id}_tpot_predictions.csv'.encode())
+    file_name = f'{dataset_id}_tpot_predictions.csv'
+    res = pd.DataFrame(predictions)
+    res.to_csv(file_name, index=False)
+    minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
+    producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
 
 
 def process_message_with_pycaret(df, dataset_id):
@@ -85,15 +83,13 @@ def process_message_with_pycaret(df, dataset_id):
     # Использование PyCaret
     setup(data=train_data, target='output')
     pycaret_clf = compare_models()
-    pycaret_predictions = predict_model(pycaret_clf, data=test_data)
+    predictions = predict_model(pycaret_clf, data=test_data)
 
+    file_name = f'{dataset_id}_pycaret_predictions.csv'
     # Запись результатов классификации PyCaret в CSV файл
-    pycaret_predictions.to_csv(f'{dataset_id}_pycaret_predictions.csv', index=False)
-    minio_client.fput_object(minio_output_bucket_name,
-                             f'{dataset_id}_pycaret_predictions.csv',
-                             f'{dataset_id}_pycaret_predictions.csv')
-    producer.send(datasets_output_topic, key=dataset_id.encode(),
-                  value=f'{dataset_id}_pycaret_predictions.csv'.encode())
+    predictions['prediction_label'].to_csv(file_name, index=False)
+    minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
+    producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
 
 
 # Потребление сообщений из топика datasets_input
@@ -109,7 +105,18 @@ for message in consumer:
     # Загрузка CSV файла в DataFrame
     dataframe = pd.read_csv(csv_file_path)
     process_message_with_autogluon(dataframe, trace_id)
-    # process_message_with_autokeras(dataframe, trace_id)
-    # process_message_with_tpot(dataframe, trace_id)
-    # process_message_with_pycaret(dataframe, trace_id)
-    # todo cleanup files
+    process_message_with_autokeras(dataframe, trace_id)
+    process_message_with_tpot(dataframe, trace_id)
+    process_message_with_pycaret(dataframe, trace_id)
+
+    if os.path.exists(csv_file_path) and os.path.isfile(csv_file_path):
+        os.remove(csv_file_path)
+
+    processes = ['autogluon', 'autokeras', 'tpot', 'pycaret']
+
+    for i in range(4):
+        file_path = f'{trace_id}_{processes[i]}_predictions.csv'
+        # Check if the file exists
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            # Remove the file
+            os.remove(file_path)

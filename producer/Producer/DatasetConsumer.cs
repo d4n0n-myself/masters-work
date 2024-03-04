@@ -12,10 +12,10 @@ public class DatasetConsumer
     private const string TopicName = "datasets_output";
 
     public DatasetConsumer(IOptions<ConsumerConfig> consumerOptions,
-        IOptions<DatabaseOptions> databaseOptions)
+        DatabaseOptions databaseOptions)
     {
         _consumerConfig = consumerOptions.Value;
-        _databaseConfig = databaseOptions.Value;
+        _databaseConfig = databaseOptions;
     }
 
     public async Task ConsumeAsync(CancellationToken ct = default)
