@@ -38,10 +38,10 @@ def process_message_with_autogluon(df, dataset_id):
     # Классификация тестовых значений
     predictions = predictor.predict(test_data)
 
+    test_data.insert(df.columns.size, 'prediction', predictions)
     file_name = f'{dataset_id}_autogluon_predictions.csv'
-
     # Создание CSV файла с результатами классификации
-    predictions.to_csv(file_name, index=False)
+    test_data.to_csv(file_name, index=False)
 
     # Загрузка CSV файла с результатами в Minio
     minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
@@ -57,9 +57,9 @@ def process_message_with_autokeras(df, dataset_id):
     clf.fit(train_data, train_data['output'])
     predictions = clf.predict(test_data)
 
+    test_data.insert(df.columns.size, 'prediction', predictions)
     file_name = f'{dataset_id}_autokeras_predictions.csv'
-    res = pd.DataFrame(predictions)
-    res.to_csv(file_name, index=False)
+    test_data.to_csv(file_name, index=False)
     minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
     producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
 
@@ -71,9 +71,9 @@ def process_message_with_tpot(df, dataset_id):
     tpot_clf.fit(train_data.drop('output', axis=1), train_data['output'])
     predictions = tpot_clf.predict(test_data.drop('output', axis=1))
 
+    test_data.insert(df.columns.size, 'prediction', predictions)
     file_name = f'{dataset_id}_tpot_predictions.csv'
-    res = pd.DataFrame(predictions)
-    res.to_csv(file_name, index=False)
+    test_data.to_csv(file_name, index=False)
     minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
     producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
 
@@ -85,9 +85,10 @@ def process_message_with_pycaret(df, dataset_id):
     pycaret_clf = compare_models()
     predictions = predict_model(pycaret_clf, data=test_data)
 
+    test_data.insert(df.columns.size, 'prediction', predictions['prediction_label'])
     file_name = f'{dataset_id}_pycaret_predictions.csv'
     # Запись результатов классификации PyCaret в CSV файл
-    predictions['prediction_label'].to_csv(file_name, index=False)
+    test_data.to_csv(file_name, index=False)
     minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
     producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
 
