@@ -1,8 +1,8 @@
 <template>
-  <h2>Список результатов для 2966c007-8511-457d-8546-16dffecf574f:</h2>
+  <h2>Список результатов для  {{ this.$route.params.id }}:</h2>
   <div v-for="(values, key) in result" :key="key">
     <details>
-      <summary :id="key">{{ key }} </summary>
+      <summary :id="key">{{ key }}</summary>
       <div style="margin: 1%"></div>
       <table style="table-layout: fixed; width: 100%;border-collapse: collapse">
         <tr>
@@ -35,12 +35,11 @@ export default {
       result: {},
     };
   },
-  mounted() {
-    this.fetchData();
+  created() {
+    this.fetchData(this.$route.params.id);
   },
   methods: {
-    fetchData() {
-      const id = '2966c007-8511-457d-8546-16dffecf574f';
+    fetchData(id) {
       const url = `http://localhost:5050/Results/ListFiles?id=${id}`;
 
       axios.get(url)

@@ -78,7 +78,7 @@ public class ResultsController : Controller
     public async Task<IActionResult> ListDatasetsAsync()
     {
         await using var connection = new NpgsqlConnection(_config.ConnectionString);
-        var list = await connection.QueryAsync<string>("SELECT DISTINCT id FROM results");
+        var list = await connection.QueryAsync<string>("SELECT DISTINCT lower(id) FROM results;");
         return Ok(list);
     }
 
@@ -100,8 +100,11 @@ public class ResultsController : Controller
         {
             var data = await SingleAsync(filename, ct);
 
-            if (data is OkObjectResult okObjectResult)
-                result.Add(filename, (List<string[]>)okObjectResult.Value);
+            if (data is not OkObjectResult okObjectResult) continue;
+            var startHandlerNameIndex = filename.IndexOf('_') + 1;
+            var endHandlerNameIndex = filename.LastIndexOf('_');
+            var fileNameToDisplay = filename[startHandlerNameIndex..endHandlerNameIndex];
+            result.Add(fileNameToDisplay, (List<string[]>)okObjectResult.Value);
         }
 
         return Ok(result);

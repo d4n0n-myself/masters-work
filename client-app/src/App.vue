@@ -5,8 +5,7 @@ import {RouterLink, RouterView} from 'vue-router'
 <template>
   <header>
     <nav>
-      <RouterLink to="/">Datasets</RouterLink>
-      <RouterLink to="/about">Results</RouterLink>
+      <RouterLink to="/"> <h1> Datasets </h1> </RouterLink>
     </nav>
   </header>
 
@@ -19,11 +18,10 @@ header {
   max-height: 100vh;
 }
 
-
 nav {
   width: 100%;
   font-size: 24px;
-  text-align: center;
+  text-align: left;
   margin-top: 2rem;
 }
 
@@ -37,7 +35,6 @@ nav a.router-link-exact-active:hover {
 
 nav a {
   display: inline-block;
-  padding: 0 1rem;
   border-left: 1px solid var(--color-border);
 }
 
