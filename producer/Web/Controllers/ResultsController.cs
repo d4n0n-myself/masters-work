@@ -91,22 +91,35 @@ public class ResultsController : Controller
 
         await using var connection = new NpgsqlConnection(_config.ConnectionString);
         var parameters = new { Guid = id };
-        var files = await connection.QueryAsync<string>(
-            "SELECT filename FROM results WHERE id = @Guid", parameters);
+        var files = await connection.QueryAsync<Dto>(
+            "SELECT filename, best_model, accuracy FROM results WHERE id = @Guid", parameters);
 
-        var result = new Dictionary<string, List<string[]>>();
+        var result = new List<FilesResponse>();
 
-        foreach (var filename in files)
+        foreach (var dto in files)
         {
-            var data = await SingleAsync(filename, ct);
+            var data = await SingleAsync(dto.filename, ct);
 
             if (data is not OkObjectResult okObjectResult) continue;
-            var startHandlerNameIndex = filename.IndexOf('_') + 1;
-            var endHandlerNameIndex = filename.LastIndexOf('_');
-            var fileNameToDisplay = filename[startHandlerNameIndex..endHandlerNameIndex];
-            result.Add(fileNameToDisplay, (List<string[]>)okObjectResult.Value);
+            var startHandlerNameIndex = dto.filename.IndexOf('_') + 1;
+            var endHandlerNameIndex = dto.filename.LastIndexOf('_');
+            dto.filename = dto.filename[startHandlerNameIndex..endHandlerNameIndex];
+            result.Add(new FilesResponse() { Dto = dto, Value = (List<string[]>)okObjectResult.Value } );
         }
 
         return Ok(result);
     }
+}
+
+class Dto
+{
+    public string filename { get; set; }
+    public string best_model { get; set; }
+    public string accuracy { get; set; }
+}
+
+class FilesResponse
+{
+    public Dto Dto { get; set; }
+    public List<string[]> Value { get; set; }
 }

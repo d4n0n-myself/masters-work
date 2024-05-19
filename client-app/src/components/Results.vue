@@ -2,7 +2,9 @@
   <h2>Список результатов для  {{ this.$route.params.id }}:</h2>
   <div v-for="(values, key) in result" :key="key">
     <details>
-      <summary :id="key">{{ key }}</summary>
+      <summary :id="key"> {{ values.dto.filename }} </summary>
+      Best model: {{ values.dto.best_model }} <br>
+      Accuracy: {{ values.dto.accuracy }} <br>
       <div style="margin: 1%"></div>
       <table style="table-layout: fixed; width: 100%;border-collapse: collapse">
         <tr>
@@ -15,7 +17,7 @@
             Result
           </td>
         </tr>
-        <tr v-for="value in values" :key="value">
+        <tr v-for="value in values.value" :key="value">
           <td style="border-color: var(--color-border); border-style: solid; margin: 0; padding: 5px"
               v-for="i in value" :key="value"> {{ i }}
           </td>
