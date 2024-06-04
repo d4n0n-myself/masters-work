@@ -1,3 +1,4 @@
+import json
 import os
 from kafka import KafkaConsumer, KafkaProducer
 from minio import Minio
@@ -7,6 +8,9 @@ import autokeras as ak
 from sklearn.model_selection import train_test_split
 from tpot import TPOTClassifier
 from pycaret.classification import *
+
+class Empty:
+    pass
 
 # Получение настроек Kafka из переменных среды
 kafka_bootstrap_servers = os.environ.get('KAFKA_BOOTSTRAP_SERVERS')
@@ -30,7 +34,7 @@ minio_client = Minio(minio_endpoint, access_key=minio_access_key, secret_key=min
 
 def process_message_with_autogluon(df, dataset_id):
     # Разделение на тренировочный и тестовый датасет
-    train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
+    train_data, test_data = train_test_split(df, train_size=df.shape[0]-25, test_size=25)
 
     # Метод классификации с AutoGluon
     predictor = ag.TabularPredictor(label='output').fit(train_data)
@@ -38,6 +42,7 @@ def process_message_with_autogluon(df, dataset_id):
     # Классификация тестовых значений
     predictions = predictor.predict(test_data)
 
+    accuracy_score = predictor.evaluate(test_data, silent=True)
     test_data.insert(df.columns.size, 'prediction', predictions)
     file_name = f'{dataset_id}_autogluon_predictions.csv'
     # Создание CSV файла с результатами классификации
@@ -46,26 +51,38 @@ def process_message_with_autogluon(df, dataset_id):
     # Загрузка CSV файла с результатами в Minio
     minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
 
+    obj = Empty()
+    obj.file_name = file_name
+    obj.accuracy = accuracy_score['accuracy']
+    obj.best_model = predictor.model_best
+
     # Создание сообщения в топик datasets_output
-    producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
+    producer.send(datasets_output_topic, key=dataset_id.encode(), value=json.dumps(obj.__dict__).encode())
 
 
 def process_message_with_autokeras(df, dataset_id):
-    train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
+    train_data, test_data = train_test_split(df, train_size=df.shape[0]-25, test_size=25)
     # Использование AutoKeras
     clf = ak.StructuredDataClassifier(max_trials=10)
-    clf.fit(train_data, train_data['output'])
+    fit_result = clf.fit(train_data, train_data['output'])
     predictions = clf.predict(test_data)
+    loss, accuracy = clf.evaluate(test_data, test_data['output'])
 
+    predictions = [int(iterator) for iterator in predictions]
     test_data.insert(df.columns.size, 'prediction', predictions)
     file_name = f'{dataset_id}_autokeras_predictions.csv'
     test_data.to_csv(file_name, index=False)
     minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
-    producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
+
+    obj = Empty()
+    obj.file_name = file_name
+    obj.accuracy = round(accuracy, 2)
+    obj.best_model = fit_result.model.output_names[0]
+    producer.send(datasets_output_topic, key=dataset_id.encode(), value=json.dumps(obj.__dict__).encode())
 
 
 def process_message_with_tpot(df, dataset_id):
-    train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
+    train_data, test_data = train_test_split(df, train_size=df.shape[0]-25, test_size=25)
     # Использование TPOT
     tpot_clf = TPOTClassifier(generations=5, population_size=20, verbosity=2)
     tpot_clf.fit(train_data.drop('output', axis=1), train_data['output'])
@@ -79,7 +96,7 @@ def process_message_with_tpot(df, dataset_id):
 
 
 def process_message_with_pycaret(df, dataset_id):
-    train_data, test_data = train_test_split(df, train_size=0.75, test_size=0.25)
+    train_data, test_data = train_test_split(df, train_size=df.shape[0]-25, test_size=25)
     # Использование PyCaret
     setup(data=train_data, target='output')
     pycaret_clf = compare_models()
@@ -121,3 +138,6 @@ for message in consumer:
         if os.path.exists(file_path) and os.path.isfile(file_path):
             # Remove the file
             os.remove(file_path)
+
+    print('done processing message')
+
