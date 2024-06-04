@@ -87,12 +87,31 @@ def process_message_with_tpot(df, dataset_id):
     tpot_clf = TPOTClassifier(generations=5, population_size=20, verbosity=2)
     tpot_clf.fit(train_data.drop('output', axis=1), train_data['output'])
     predictions = tpot_clf.predict(test_data.drop('output', axis=1))
+    accuracy = tpot_clf.score(train_data.drop('output', axis=1), train_data['output'])
+    my_dict = list(tpot_clf.evaluated_individuals_.items())
+
+    model_scores = pd.DataFrame(columns=['model', 'cv_score', 'model_info'])
+    for model in my_dict:
+        model_name = model[0]
+        model_info = model[1]
+        cv_score = model[1].get('internal_cv_score')  # Pull out cv_score as a column (i.e., sortable)
+        model_scores.loc[len(model_scores)] = {'model': model_name,
+                                        'cv_score': cv_score,
+                                        'model_info': model_info,}
+
+    model_scores = model_scores.sort_values('cv_score', ascending=False)
+    best_model = model_scores['model'][0]
 
     test_data.insert(df.columns.size, 'prediction', predictions)
     file_name = f'{dataset_id}_tpot_predictions.csv'
     test_data.to_csv(file_name, index=False)
     minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
-    producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
+
+    obj = Empty()
+    obj.file_name = file_name
+    obj.accuracy = round(accuracy, 2)
+    obj.best_model = best_model
+    producer.send(datasets_output_topic, key=dataset_id.encode(), value=json.dumps(obj.__dict__).encode())
 
 
 def process_message_with_pycaret(df, dataset_id):
@@ -101,13 +120,21 @@ def process_message_with_pycaret(df, dataset_id):
     setup(data=train_data, target='output')
     pycaret_clf = compare_models()
     predictions = predict_model(pycaret_clf, data=test_data)
+    results = pull()
+    accuracy = results['Accuracy'][0]
+    best_model = results['Model'][0]
 
     test_data.insert(df.columns.size, 'prediction', predictions['prediction_label'])
     file_name = f'{dataset_id}_pycaret_predictions.csv'
     # Запись результатов классификации PyCaret в CSV файл
     test_data.to_csv(file_name, index=False)
     minio_client.fput_object(minio_output_bucket_name, file_name, file_name, content_type='text/csv')
-    producer.send(datasets_output_topic, key=dataset_id.encode(), value=file_name.encode())
+
+    obj = Empty()
+    obj.file_name = file_name
+    obj.accuracy = round(accuracy, 2)
+    obj.best_model = best_model
+    producer.send(datasets_output_topic, key=dataset_id.encode(), value=json.dumps(obj.__dict__).encode())
 
 
 # Потребление сообщений из топика datasets_input
